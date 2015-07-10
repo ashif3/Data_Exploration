@@ -1,0 +1,301 @@
+Facebook Data Exploration by Ashif Ali
+========================================================
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# Load all of the packages that you end up using
+# in your analysis in this code chunk.
+
+# Notice that the parameter "echo" was set to FALSE for this code chunk.
+# This prevents the code from displaying in the knitted HTML output.
+# You should set echo=FALSE for all code chunks in your file.
+
+library(ggplot2)
+library(dplyr)
+library(knitr)
+library(gridExtra)
+```
+
+```{r echo=FALSE, Load_the_Data}
+# Load the Data
+facebook_data <- read.csv("pseudo_facebook.tsv",sep="\t")
+
+```
+
+# Univariate Plots Section
+```{r echo=TRUE, Summary}
+# Dimension of my data
+dim(facebook_data)
+# Column names
+names(facebook_data)
+# Structure of my data
+str(facebook_data)
+levels(facebook_data$gender)
+# Summary of all the columns in the data set
+summary(facebook_data)
+```
+
+
+```{r echo=FALSE, day}
+qplot(x=dob_day,data=facebook_data, main="Histogram of Users Birthday",xlab="days of the month", ylab="number of users") + scale_x_discrete(breaks=1:31)
+```
+
+This is the plot of number of people having birthday on a particular day. Here we can notice that on the first day of the month there is a huge bin of almost 8000 people. This seems really unusual because we expect the birthday distribution of people approximately same accross every day of the month. On the 31st day the size of the bin is smaller than any other day, because not every month has 31 days. So, smaller bin on 31st day makes a lot of sense.
+
+```{r echo=FALSE, day_facet_wrap}
+qplot(x=dob_day,data=facebook_data, main="Users Birthday Distributed over months", xlab="days of 12 months", ylab="number of users") + facet_wrap(~dob_month, ncol=3)
+```
+
+Here I have splitted the first histogram into 12 histrogram for each month. Here we can see that the birthday distribution of users over the day in each month is almost same except the first month, i.e. Janurary. On 1st Janurary there is a huge peak of almost 4000 users, this could be beacause the default birthday setting of drop down menu in facebook is 1, another reason may be that the users want to protect their privacy so they discover the default 1st January as their birhtday.
+
+```{r echo=FALSE, user_age}
+qplot(x=age,data=facebook_data,binwidth=3, color=I('black'), fill=I('#5760AB'), main="User Age Distribution") + scale_x_continuous(limits=c(10,115), breaks=seq(10,115,10))
+
+```
+
+From the graph it is clear that there is no user having age less than 13 years, because for a facebook account user must be atleast 13 years old. We can see the finer distribution of ages of users. It seems that teens have more facebook account than more aged users. We can also see some unusual spikes above 100 and this might be a bad data of an extreme case.
+
+```{r echo=FALSE, tenure}
+qplot(x=tenure/365,data=facebook_data, binwidth=.25,xlab="number of years using facebook",ylab="number of users in sample", main="Number of users vs Tenure", color=I('black'), fill=I('orange')) + scale_x_continuous(limits=c(0,7.5), breaks=seq(0,7.5,1))
+```
+
+Here we can see that there is large number of users who has joined the facebook two to three years ago.
+
+
+```{r echo=FALSE, friend_count}
+qplot(x=friend_count, data=facebook_data, binwidth=25, xlab="number of friends", main="Distribution of Friend Count", color=I('#B2B2B2')) + scale_x_continuous(limits=c(0,1000), breaks=seq(0,1000,100))
+```
+
+A user can have a maximum of 5000 friend on facebook, but I found that there is much less users having friend_count more than 500, so I limited the x-axis to (0,1000). We can see that the distribution of friend count is exponentially decreasing and there is large number of users having friend count less than (200-300). 
+
+```{r echo=FALSE, friend_count_transform}
+plot1 <- qplot(x=friend_count, data=facebook_data, main="Distrubution of friend count", color=I('#7A7A7A'))
+plot2 <- qplot(x=friend_count, data=facebook_data, xlab="friend_count(transformed using log10 function)", color=I('#3399FF'), fill=I('#0066FF'))+scale_x_log10()
+plot3 <- qplot(x=friend_count, data=facebook_data, xlab="friend_count(transformed using sqrt function)", color=I('#009999'), fill=I('#006666'))+scale_x_sqrt()
+grid.arrange(plot1,plot2,plot3,ncol=1)
+
+```
+
+In the first plot of friend count we can see that there is a long tail. So, I have transformed the friend count variable using log10 and sqrt function in the second and third plot to get the more clear pattern without being distracted by the tail.
+
+
+```{r echo=FALSE, friend_count_split_by_gender}
+qplot(x=friend_count, data=subset(facebook_data,!is.na(facebook_data$gender)), binwidth=25, xlab="number of friends", main="Friend Count distribution split by gender") + scale_x_continuous(limits=c(0,1000), breaks=seq(0,1000,200)) + facet_wrap(~gender)
+
+```
+
+Here I have splitted the previous plot on the basis of gender. But it seems it is hard to determine from this histogram that who has more friends on an average male or female.
+
+```{r echo=FALSE, friend_count_gender_freqpoly}
+qplot(x=friend_count, y= ..count../sum(..count..), data=na.omit(facebook_data), geom='freqpoly', color=gender, binwidth=10, xlab="Friend Count", ylab="Proportion of user with that friend count", main="Friend count distribution by gender") + scale_x_continuous(limits=c(0,1000), breaks=seq(0,1000,100))
+
+```
+
+In contrast to the previous historgram this is a frequency polygon which shows the distribution of the proportion of friend count splitted over gender in a single plot. This freqency polygon shows that higher percentage of males have friend count much less, which may drag the median and mean friend count for men down. So, It seems that the median friend count for female should be larger than that of male.
+
+We can check it through numerical summary.
+```{r echo=TRUE, friend_count_gender}
+# number of males and females
+table(facebook_data$gender)
+
+# friend count summary by gender
+by(facebook_data$friend_count,facebook_data$gender,summary)
+
+```
+
+Here I have summarized the friend_count on the basis of gender. There are 40254 female and 58574 male in the data set. Female has more friends on an average. The difference between the Median friend count for female and male is 22. Here Median friend count is more robust than mean friend count, because a few people with more friend count can drag the mean up, which does not necessarily represents all the users.
+
+
+```{r echo=FALSE, friend_count_boxplot}
+qplot(x=gender,y=friend_count,data=subset(facebook_data,!is.na(facebook_data$gender)), geom='boxplot', main="boxplot showing friend count by gender") + coord_cartesian(ylim=c(0,500))
+```
+
+It looks like that on an average females have more friends then males, since the **dark horizontal black line** which represents median is slightly higher than males. Here I have limited the y-axis to (0,500).
+
+
+
+```{r echo=FALSE, www_likes}
+qplot(x=gender,y=friendships_initiated, data=subset(facebook_data,!is.na(facebook_data$gender)), geom='boxplot', main="friendships initiated by gender") + coord_cartesian(ylim=c(0,200))
+```
+
+Similar to the **previous boxplot** this boxplot shows the friendships initiated by the gender. I have limited the y-axis to (0,200) to get the more clear look. Here we can guess that the **dark horizontal black line** which is the median line is slightly above in case of female. So, females initiates more friendships on an average.
+
+I have also checked it through numerical summary.
+```{r echo=TRUE, friendship_initiated_numerical}
+# Friendship Initiated Summary by Gender
+by(facebook_data$friendships_initiated,facebook_data$gender,summary)
+```
+
+The Median friendships initiated by female is 49, and the Median friendships initiated by male is 44.
+
+
+
+```{r echo=FALSE, likes_received}
+qplot(x=likes_received,data=na.omit(facebook_data), geom='freqpoly', color=gender, xlab="number of likes received(log10)", ylab="number of users", main="Likes received splitted by gender") + scale_x_log10()
+```
+
+In a single sentence the above frequency polygon can be summarized as **small number of likes is received by larger number of men and large number of likes is received by larger number of women.**
+
+We can also summarize the likes received through numerical code as below
+```{r echo=TRUE, likes_received_numeric_summary}
+by(facebook_data$likes_received, facebook_data$gender,sum)
+by(facebook_data$likes_received, facebook_data$gender,summary)
+```
+Total likes received by female=10121282, Total likes received by male=3977851
+
+Median likes received by female=29.0, Median likes received by male=4.0
+
+
+# Univariate Analysis
+
+### What is the structure of your dataset?
+There are 99003 observation of 15 variable in my data set. These variables are userid, age, dob_day, dob_year, dob_month, gender, tenure, friend_count, frienships_initiated, likes, likes_received, mobile_likes, mobile_likes_received, www_likes, www_likes_received.
+
+All the variables in the data set is in the form of integer except gender. gender column is a variable of type factor having two levels "female" and "male".
+
+userid is unique in every observations. Age of users are ranging from 13 to 113 and tenure is represented in terms of day. Some of the observations have null values in its gender column.
+
+### What is/are the main feature(s) of interest in your dataset?
+The main features in the data set is age, tenure, friend_count and gender. I would like to find the relationship between friend_count and age on the basis of gender. I would also like to explore the variables friend_count, age with respect to year joined.
+
+### What other features in the dataset do you think will help support your investigation into your feature(s) of interest?
+The other feature that will help to support my investigation are tenure, dob_day, dob_month and dob_year.
+
+### Did you create any new variables from existing variables in the dataset?
+In the univariate analysis I didn't have created any new variable in the dataset.
+
+### Of the features you investigated, were there any unusual distributions? Did you perform any operations on the data to tidy, adjust, or change the form of the data? If so, why did you do this?
+In my data set some of the observations have NA value in the gender section, so whenever I splitted my plot over gender I got three sections male, female and NA. To avoid this I subsetted my data set to get only those rows which does not have NA value in the gender column.
+
+
+# Bivariate Plots Section
+```{r echo=FALSE, friendcount_age}
+ggplot(aes(x=age, y=friend_count), data=facebook_data) + geom_point(alpha=1/10, color=I('black')) + scale_x_continuous(breaks=seq(10,120,5)) + xlab('age of users') + ylab('friend count of users') + ggtitle('Friend Count ~ Age')
+```
+
+Here we can notice that the younger users have large number of friends than the old users. We can also see the long vertical bar at the age 68 and above 100, but it seems that those people have lied about their their age. Those users are likely to be teen agers or perhaps fake account.
+
+
+```{r echo=FALSE, friendcount_age_condition}
+ggplot(aes(x=age, y=friend_count), data=facebook_data) + geom_point(alpha=1/20, position=position_jitter(h=0), color='orange') + coord_cartesian(xlim=c(13,70), ylim=c(0,1000)) + geom_line(stat='summary', fun.y=mean) + geom_line(stat='summary', fun.y=median, color='brown') + geom_line(stat='summary', fun.y=quantile, probs=0.1, linetype=2, color='blue') + geom_line(stat='summary', fun.y=quantile, probs=0.9, linetype=4, color='red') + xlab('age of users') + ylab('friend count of users') + ggtitle('Friend Count ~ Age')
+```
+
+This is same plot as previous but I have limited x-axis to the users having age (0-70) and y-axis to the users having friend count below 1000. I have summarized this plot more clearly by adding four summary lines. 
+The line at the top is a **red dashed line** which represents 90% quantile i.e. **90% of the users have friend count below that red dashed line.** So, we can see that the 90% of the users having age between 30 to 60 has friend count below 250.
+The line below the red dashed line is a black solid line. This **black solid line** is a summary line of the **mean friend count** by age. This summary line immediately reveals the increase in the mean friend count for the young users and then subsequent decrease after that. According to this summary line the mean friend count even for the young user falls below 375.
+The line below the mean line is a **brown solid line** which is the **summary line of median friend count**. It looks like that the median friend count for the young users are around 200 and for the (30-60) aged users its around 100.
+The line at the **bottom** is a summary line which represents **10% quantile** i.e. 10% of the users have friend count below this line.
+
+We can also summarise the strength of the relationship between friend count and age in a single number using correlation. The below code gives the correlation between friend count and age variable. Here I am only conserding the user having age less than 70.
+```{r echo=TRUE, friendcount_age_correlation}
+cor(subset(facebook_data, facebook_data$age<=70)$age, subset(facebook_data, facebook_data$age<=70)$friend_count)
+```
+The correlation coefficient between age and friend count is around -0.17. This is not a strong relationship, but it shows that as the age increases, friend count decreases.
+
+
+```{r echo=FALSE, friend_count_tenure}
+ggplot(aes(x=floor(tenure/12),y=friend_count), data=na.omit(facebook_data)) + geom_point(alpha=1/10, color='#FF6600') + geom_line(stat='summary', fun.y=mean, color='black') + geom_smooth() + coord_cartesian(xlim=c(0,200), ylim=c(0,2000)) + xlab('number of months using facebook') + ylab('friend count') + ggtitle('Relation between friend_count and tenure')
+```
+
+This plot shows the relationship between friend count and tenure. The summary line that is shown on the plot is the mean friend count over number of months or tenure. The slope of the summary line is positive which indicates increment in mean friend count on increment of number of months using facebook. Thus the correlation coefficient for this plot should be positive.
+
+We can find the correlation coefficient for this relationship as below:
+```{r echo=TRUE, friendcount_tenure_corr}
+cor(na.omit(facebook_data)$tenure, na.omit(facebook_data)$friend_count)
+```
+
+
+```{r echo=FALSE, www_likes_}
+ggplot(aes(x=www_likes_received,y=likes_received), data=facebook_data) + geom_point(color='#3366FF') + coord_cartesian(xlim=c(0,500), ylim=c(0,1000)) + geom_smooth(color='black') + ggtitle('Relation between likes_received ~ www_likes_received')
+```
+
+The above plot explores the relationship between likes_received and www_likes_received. Here the likes_received will always be greater than www_likes_received, since www_likes_received is a subset of likes_received variable. The black line shown is a summary of mean likes_received over www_likes_received and its too straight. From the plot and from the summary line it looks like that both the variables are highly correlated.
+
+We can test the coorelation between the two variables using the numerical code as below:
+```{r echo=TRUE, www_likes_corr}
+cor(facebook_data$www_likes_received, facebook_data$likes_received)
+```
+
+Thus the correlation between the two variables are strong and positive, and in reality most of the variables are not correlated closely. The correlation that I have just found is strong because of the nature of the variable, one variable is subset of other variable.
+
+
+```{r echo=FALSE, like_received_friendcount}
+ggplot(aes(x=friend_count, y=likes_received), data=na.omit(facebook_data)) + geom_smooth(aes(color=gender)) + coord_cartesian(ylim=c(0,7500)) + ggtitle('Likes received vs Friend Count splitted over gender') + ylab('average likes received')
+```
+
+This plot shows the relationship between likes received and friend count splitted over gender. The green line is the summary line indicates the mean likes_received over friend_count. The average likes received by a user is directly proportional to the friend count. For the friend below 4000, females receives more likes on an average than males. On the other hand for friend more than 4000, males receives more likes than females.
+
+```{r}
+cor(facebook_data$friend_count, facebook_data$likes_received)
+```
+
+The correlation between above two variables are 0.2364. This indicates that both the variables are positively correlated. It means as the friend_count increases, likes_received also increases.
+
+
+
+# Bivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation.
+In this part of the investigation, following are the relationships that I have observed:
+
+1. As the age increases, average friend count decreases, i.e. younger users have large number of friends on an average then older user.
+
+2. The average friend count is directly proportional to the tenure (number of months using facebook).
+
+3. Since www_likes_received is a subset of likes_received, so these two variables are highly related. As the www_likes_received increases, likes_received also increases.
+
+4. On an average female gets more likes then males.
+
+### Did you observe any interesting relationships between the other features (not the main feature(s) of interest)?
+One of the interesting relationships that I have observed is In case of friend count less than 4000 female gets more likes on an average, but In case of friend count greater than 4000 male users gets more likes on an average. The other thing I have found is 90% of the users having age between 30 to 60 has friend count below 250. I also got that www_likes_received and likes_received is highly correlated and in reality most of the variables are not correlated that closely.
+
+### What was the strongest relationship you found?
+The strongest relationship that I have found is the relationship between www_likes_received and likes_received. These two variables are strongly and positively correlated. The correlation coefficient between these two variable is 0.9479902.
+
+
+
+# Multivariate Plots Section
+
+```{r echo=FALSE, ratio_friend_count}
+male_data <- subset(facebook_data,facebook_data$gender=='male')
+female_data=subset(facebook_data,facebook_data$gender=='female')
+male_data <- group_by(male_data,age)
+male_data <- summarise(male_data,mean_friend_male=mean(friend_count))
+female_data <- group_by(female_data,age)
+female_data <- summarise(female_data,mean_friend_female=mean(friend_count))
+male_data$mean_friend_female <- female_data$mean_friend_female
+ggplot(aes(x=age, y=mean_friend_female / mean_friend_male),data=male_data) + geom_line(color='red') + scale_x_continuous(limits=c(13,70), breaks=seq(13,70,5)) + scale_y_continuous(breaks=seq(0,3,0.25)) + ylab('Female_mean_friend_count / Male_mean_friend_count') + ggtitle('Ratio of mean female and male friend count with respect to age')
+```
+
+To make this plot I have used three variables age, friend_count and gender. The purpose of this plot is to show how the ratio of average friend count for female and male varies with age. Here we can see that in case of younger users this ratio is nearly 2 which means that on average females have 2 times more friend then males. Another thing that we can notice that over all the ages this ratio is greater than 1, except for the age>60.
+
+```{r echo=FALSE, friend_count_year_joined}
+facebook_data$year_joined <- floor(2014-facebook_data$tenure/365)
+facebook_data$year_joined_bucket <- cut(facebook_data$year_joined, c(2004,2009,2011,2012,2014))
+ggplot(aes(x=age,y=friend_count), data=na.omit(facebook_data)) + geom_smooth(aes(color=year_joined_bucket)) + coord_cartesian(xlim=c(13,70)) + geom_smooth(linetype=2) + ggtitle('Friend count vs Age, splitted over year joined')
+```
+
+The above plot summarizes the relationship between friend_count and age over the variable year_joined. It is easy to see that those users who has joined facebook earlier (2004-2009) has larger median friend count than the other users irrespective of their age. It can also be noticed that whatever be year in which people joins facebook, the teen users have larger median friend count then the younger users. Here the blue dashed line shows the median friend count of all the users over the age.
+
+
+```{r echo=FALSE, friendship_initiate_year_joined}
+ggplot(aes(x=tenure, y=friendships_initiated/tenure), data=subset(facebook_data, tenure>=1)) + geom_line(aes(color=year_joined_bucket), fun.y=mean) + ggtitle('Friendship Initeated vs tenure, splitted over year joined')
+```
+
+Here from the graph we can see that those users who have joined the facebook few days ago initiates more friends per day then any other user. Friendships initiated per day by the user decreases exponentially as the tenure increases.
+
+
+# Multivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation.
+Similar to Bivariate Analysis, I have observed some new relationship between the variables in this part of analysis. These relationships are:
+
+1. The ratio of mean friend count for female and mean friend count for male is always greater than 1 over all the ages.
+
+2. Those users who have joined facebook earlier has larger median friend count than the other users irrespective of their age.
+
+3. Friendships initiated per day by the user decreases exponentially as the tenure increases.
+
+### Were there any interesting or surprising interactions between features?
+One of the interesting thing that I have found in multivariate analysis is in case of younger users the ratio of mean friend count for female and mean friend count for male is nearly 2 which means that on average females have 2 times more friend then males.
+
+------
