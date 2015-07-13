@@ -2,7 +2,7 @@ Facebook Data Exploration by Ashif Ali
 ========================================================
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
-LINK FOR KNITED HTML FILE corresponding to this RMD FILE : http://datascience.16mb.com/dataexploration.html
+# LINK FOR KNITED HTML FILE corresponding to this RMD FILE : http://datascience.16mb.com/dataexploration.html
 # Load all of the packages that you end up using
 # in your analysis in this code chunk.
 
